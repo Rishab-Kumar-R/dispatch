@@ -87,3 +87,8 @@ variable "nat_instance_type" {
   type    = string
   default = "t4g.nano"
 }
+
+variable "enable_bastion" {
+  type    = bool
+  default = false
+}

@@ -21,3 +21,7 @@ output "nat_egress_ip" {
 output "migrate_function_name" {
   value = module.migrate.function_name
 }
+
+output "bastion_instance_id" {
+  value = module.bastion.instance_id
+}

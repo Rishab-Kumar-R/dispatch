@@ -37,7 +37,7 @@ module "rds" {
   name                  = local.name
   vpc_id                = module.network.vpc_id
   subnet_ids            = module.network.private_subnet_ids
-  allowed_sg_ids        = [module.network.lambda_sg_id]
+  allowed_sg_ids        = concat([module.network.lambda_sg_id], module.bastion.security_group_ids)
   engine_version        = var.db_engine_version
   database_name         = "dispatchdb"
   instance_class        = var.db_instance_class
@@ -117,6 +117,15 @@ module "migrate" {
   policy_statements      = local.db_policy
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
+}
+
+module "bastion" {
+  source = "../../modules/bastion"
+
+  name      = local.name
+  enabled   = var.enable_bastion
+  vpc_id    = module.network.vpc_id
+  subnet_id = module.network.private_subnet_ids[1]
 }
 
 resource "aws_lambda_event_source_mapping" "worker" {
