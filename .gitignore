@@ -1,0 +1,43 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+destroy.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Local config (commit the *.example copies instead)
+terraform.tfvars
+*.auto.tfvars
+backend.hcl
+
+# Build output
+dist/
+*.zip
+bootstrap
+/bin/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
