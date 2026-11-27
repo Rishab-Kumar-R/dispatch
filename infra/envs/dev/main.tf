@@ -3,18 +3,35 @@ locals {
   dist = "${path.root}/../../../dist"
 
   db_env = {
-    DB_HOST       = module.rds.address
-    DB_PORT       = tostring(module.rds.port)
-    DB_NAME       = module.rds.database_name
-    DB_SECRET_ARN = module.rds.secret_arn
-    DB_SSLMODE    = "require"
-    LOG_LEVEL     = var.log_level
+    DB_HOST    = module.rds.address
+    DB_PORT    = tostring(module.rds.port)
+    DB_NAME    = module.rds.database_name
+    DB_SSLMODE = "require"
+    LOG_LEVEL  = var.log_level
   }
 
-  db_policy = [
+  app_db_env = merge(local.db_env, {
+    DB_SECRET_ARN = aws_secretsmanager_secret.app_db.arn
+  })
+  app_db_policy = [
+    {
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = [aws_secretsmanager_secret.app_db.arn]
+    },
+  ]
+
+  migrate_env = merge(local.db_env, {
+    DB_SECRET_ARN     = module.rds.secret_arn
+    APP_DB_SECRET_ARN = aws_secretsmanager_secret.app_db.arn
+  })
+  migrate_policy = [
     {
       actions   = ["secretsmanager:GetSecretValue"]
       resources = [module.rds.secret_arn]
+    },
+    {
+      actions   = ["secretsmanager:GetSecretValue", "secretsmanager:PutSecretValue"]
+      resources = [aws_secretsmanager_secret.app_db.arn]
     },
   ]
 
@@ -63,8 +80,8 @@ module "ingest" {
   memory_size            = 256
   timeout                = 15
   log_retention_days     = var.log_retention_days
-  environment            = merge(local.db_env, { QUEUE_URL = module.queues.queue_url })
-  policy_statements      = concat(local.db_policy, [local.sqs_send_policy])
+  environment            = merge(local.app_db_env, { QUEUE_URL = module.queues.queue_url })
+  policy_statements      = concat(local.app_db_policy, [local.sqs_send_policy])
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
 }
@@ -77,8 +94,8 @@ module "relay" {
   memory_size            = 256
   timeout                = 60
   log_retention_days     = var.log_retention_days
-  environment            = merge(local.db_env, { QUEUE_URL = module.queues.queue_url })
-  policy_statements      = concat(local.db_policy, [local.sqs_send_policy])
+  environment            = merge(local.app_db_env, { QUEUE_URL = module.queues.queue_url })
+  policy_statements      = concat(local.app_db_policy, [local.sqs_send_policy])
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
 }
@@ -91,8 +108,8 @@ module "worker" {
   memory_size        = 256
   timeout            = 30
   log_retention_days = var.log_retention_days
-  environment        = local.db_env
-  policy_statements = concat(local.db_policy, [{
+  environment        = local.app_db_env
+  policy_statements = concat(local.app_db_policy, [{
     actions = [
       "sqs:ReceiveMessage",
       "sqs:DeleteMessage",
@@ -113,8 +130,8 @@ module "migrate" {
   memory_size            = 256
   timeout                = 300
   log_retention_days     = var.log_retention_days
-  environment            = local.db_env
-  policy_statements      = local.db_policy
+  environment            = local.migrate_env
+  policy_statements      = local.migrate_policy
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
 }

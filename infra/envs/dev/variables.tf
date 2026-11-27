@@ -92,3 +92,9 @@ variable "enable_bastion" {
   type    = bool
   default = false
 }
+
+variable "secret_recovery_window_days" {
+  type        = number
+  default     = 0
+  description = "0 = delete immediately"
+}

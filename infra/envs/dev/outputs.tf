@@ -25,3 +25,7 @@ output "migrate_function_name" {
 output "bastion_instance_id" {
   value = module.bastion.instance_id
 }
+
+output "app_db_secret_arn" {
+  value = aws_secretsmanager_secret.app_db.arn
+}
