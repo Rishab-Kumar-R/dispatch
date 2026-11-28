@@ -19,6 +19,8 @@ type Querier interface {
 	// Signing secrets (rotation: expire current ones, then create the new one)
 	CreateEndpointSecret(ctx context.Context, arg CreateEndpointSecretParams) (EndpointSecret, error)
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
+	// Breaker said "not yet": no attempt is consumed, the relay re-queues it when due.
+	DeferDelivery(ctx context.Context, arg DeferDeliveryParams) error
 	DeleteEventsOlderThan(ctx context.Context, arg DeleteEventsOlderThanParams) (int64, error)
 	DeleteExpiredEndpointSecrets(ctx context.Context) (int64, error)
 	DeleteExpiredRateLimitWindows(ctx context.Context, before time.Time) (int64, error)

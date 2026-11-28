@@ -75,13 +75,22 @@ module "queues" {
 module "ingest" {
   source = "../../modules/lambda"
 
-  name                   = "${local.name}-ingest"
-  zip_path               = "${local.dist}/ingest.zip"
-  memory_size            = 256
-  timeout                = 15
-  log_retention_days     = var.log_retention_days
-  environment            = merge(local.app_db_env, { QUEUE_URL = module.queues.queue_url })
-  policy_statements      = concat(local.app_db_policy, [local.sqs_send_policy])
+  name               = "${local.name}-ingest"
+  zip_path           = "${local.dist}/ingest.zip"
+  memory_size        = 256
+  timeout            = 15
+  log_retention_days = var.log_retention_days
+  environment = merge(local.app_db_env, {
+    QUEUE_URL  = module.queues.queue_url
+    KMS_KEY_ID = aws_kms_key.secrets.arn
+  })
+  policy_statements = concat(local.app_db_policy, [
+    local.sqs_send_policy,
+    {
+      actions   = ["kms:Encrypt"]
+      resources = [aws_kms_key.secrets.arn]
+    },
+  ])
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
 }
@@ -108,16 +117,25 @@ module "worker" {
   memory_size        = 256
   timeout            = 30
   log_retention_days = var.log_retention_days
-  environment        = local.app_db_env
-  policy_statements = concat(local.app_db_policy, [{
-    actions = [
-      "sqs:ReceiveMessage",
-      "sqs:DeleteMessage",
-      "sqs:GetQueueAttributes",
-      "sqs:ChangeMessageVisibility",
-    ]
-    resources = [module.queues.queue_arn]
-  }])
+  environment = merge(local.app_db_env, {
+    KMS_KEY_ID   = aws_kms_key.secrets.arn
+    DB_MAX_CONNS = "4"
+  })
+  policy_statements = concat(local.app_db_policy, [
+    {
+      actions = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:ChangeMessageVisibility",
+      ]
+      resources = [module.queues.queue_arn]
+    },
+    {
+      actions   = ["kms:Decrypt"]
+      resources = [aws_kms_key.secrets.arn]
+    },
+  ])
   vpc_subnet_ids         = module.network.private_subnet_ids
   vpc_security_group_ids = [module.network.lambda_sg_id]
 }

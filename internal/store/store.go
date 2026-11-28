@@ -128,3 +128,7 @@ func notFound(err error) error {
 func newID() uuid.UUID {
 	return uuid.Must(uuid.NewV7())
 }
+
+func NewID() uuid.UUID {
+	return newID()
+}

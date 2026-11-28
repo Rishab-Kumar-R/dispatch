@@ -143,6 +143,14 @@ func (s *Store) FinishAttempt(ctx context.Context, b *delivery.Breaker, a Attemp
 	return out, err
 }
 
+// DeferDelivery postpones a delivery without consuming an attempt.
+func (s *Store) DeferDelivery(ctx context.Context, id uuid.UUID, at time.Time) error {
+	return s.q.DeferDelivery(ctx, db.DeferDeliveryParams{
+		ID:            id,
+		NextAttemptAt: at,
+	})
+}
+
 func stateFromRow(r db.LockEndpointForUpdateRow) delivery.State {
 	st := delivery.State{
 		Status:              delivery.Status(r.Status),

@@ -18,8 +18,8 @@ SELECT id, tenant_id
 FROM deliveries
 WHERE queued_at IS NULL
   AND status = 'pending'
-  AND created_at < $1::timestamptz
-ORDER BY created_at
+  AND next_attempt_at < $1::timestamptz
+ORDER BY next_attempt_at
     LIMIT $2::int
     FOR UPDATE SKIP LOCKED
 `
@@ -91,6 +91,25 @@ func (q *Queries) CreateDeliveries(ctx context.Context, arg CreateDeliveriesPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const deferDelivery = `-- name: DeferDelivery :exec
+UPDATE deliveries
+SET queued_at = NULL,
+    next_attempt_at = $1::timestamptz,
+    updated_at = now()
+WHERE id = $2 AND status = 'pending'
+`
+
+type DeferDeliveryParams struct {
+	NextAttemptAt time.Time `json:"next_attempt_at"`
+	ID            uuid.UUID `json:"id"`
+}
+
+// Breaker said "not yet": no attempt is consumed, the relay re-queues it when due.
+func (q *Queries) DeferDelivery(ctx context.Context, arg DeferDeliveryParams) error {
+	_, err := q.db.Exec(ctx, deferDelivery, arg.NextAttemptAt, arg.ID)
+	return err
 }
 
 const getDelivery = `-- name: GetDelivery :one
@@ -395,6 +414,7 @@ SET attempt_count = attempt_count + 1,
                       THEN 'dead'::delivery_status
                   ELSE 'pending'::delivery_status END,
     next_attempt_at = $1::timestamptz,
+    queued_at = NULL,
     last_status_code = $2::int,
     last_error = $3::text,
     updated_at = now()

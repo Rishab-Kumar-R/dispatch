@@ -9,8 +9,8 @@ SELECT id, tenant_id
 FROM deliveries
 WHERE queued_at IS NULL
   AND status = 'pending'
-  AND created_at < @older_than::timestamptz
-ORDER BY created_at
+  AND next_attempt_at < @older_than::timestamptz
+ORDER BY next_attempt_at
     LIMIT sqlc.arg('batch_size')::int
     FOR UPDATE SKIP LOCKED;
 
@@ -51,6 +51,7 @@ SET attempt_count = attempt_count + 1,
                       THEN 'dead'::delivery_status
                   ELSE 'pending'::delivery_status END,
     next_attempt_at = @next_attempt_at::timestamptz,
+    queued_at = NULL,
     last_status_code = sqlc.narg('status_code')::int,
     last_error = sqlc.narg('last_error')::text,
     updated_at = now()
@@ -118,3 +119,11 @@ SET status = 'dead',
 WHERE id = @id
   AND status = 'pending'
   AND attempt_count = @expected_attempt_count;
+
+-- Breaker said "not yet": no attempt is consumed, the relay re-queues it when due.
+-- name: DeferDelivery :exec
+UPDATE deliveries
+SET queued_at = NULL,
+    next_attempt_at = @next_attempt_at::timestamptz,
+    updated_at = now()
+WHERE id = @id AND status = 'pending';

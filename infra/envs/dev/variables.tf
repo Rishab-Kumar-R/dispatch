@@ -50,12 +50,12 @@ variable "worker_max_concurrency" {
 
 variable "relay_schedule" {
   type    = string
-  default = "rate(5 minutes)"
+  default = "rate(1 minute)"
 }
 
 variable "relay_schedule_enabled" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "alarm_email" {
