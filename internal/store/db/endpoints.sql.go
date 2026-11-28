@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createEndpoint = `-- name: CreateEndpoint :one
@@ -194,9 +193,9 @@ ORDER BY id LIMIT $3::int
 `
 
 type ListEndpointsParams struct {
-	TenantID uuid.UUID   `json:"tenant_id"`
-	AfterID  pgtype.UUID `json:"after_id"`
-	PageSize int32       `json:"page_size"`
+	TenantID uuid.UUID  `json:"tenant_id"`
+	AfterID  *uuid.UUID `json:"after_id"`
+	PageSize int32      `json:"page_size"`
 }
 
 // Cursor pagination on the time-ordered UUIDv7 id.

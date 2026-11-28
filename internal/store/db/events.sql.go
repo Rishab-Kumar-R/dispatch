@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteEventsOlderThan = `-- name: DeleteEventsOlderThan :execrows
@@ -137,10 +136,10 @@ ORDER BY id DESC LIMIT $4::int
 `
 
 type ListEventsParams struct {
-	TenantID  uuid.UUID   `json:"tenant_id"`
-	EventType *string     `json:"event_type"`
-	BeforeID  pgtype.UUID `json:"before_id"`
-	PageSize  int32       `json:"page_size"`
+	TenantID  uuid.UUID  `json:"tenant_id"`
+	EventType *string    `json:"event_type"`
+	BeforeID  *uuid.UUID `json:"before_id"`
+	PageSize  int32      `json:"page_size"`
 }
 
 func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event, error) {

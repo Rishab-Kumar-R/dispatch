@@ -51,6 +51,7 @@ type Querier interface {
 	LockEndpointForUpdate(ctx context.Context, id uuid.UUID) (LockEndpointForUpdateRow, error)
 	MarkDeliveriesQueued(ctx context.Context, ids []uuid.UUID) error
 	MarkDeliveryAttemptFailed(ctx context.Context, arg MarkDeliveryAttemptFailedParams) (MarkDeliveryAttemptFailedRow, error)
+	MarkDeliveryDead(ctx context.Context, arg MarkDeliveryDeadParams) (int64, error)
 	MarkDeliverySucceeded(ctx context.Context, arg MarkDeliverySucceededParams) (int64, error)
 	ReplayDelivery(ctx context.Context, arg ReplayDeliveryParams) (Delivery, error)
 	// Manual re-enable of a degraded/disabled endpoint.

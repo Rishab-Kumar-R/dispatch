@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const claimUnqueuedDeliveries = `-- name: ClaimUnqueuedDeliveries :many
@@ -224,7 +223,7 @@ type ListDeliveriesForEndpointParams struct {
 	EndpointID uuid.UUID       `json:"endpoint_id"`
 	TenantID   uuid.UUID       `json:"tenant_id"`
 	Status     *DeliveryStatus `json:"status"`
-	BeforeID   pgtype.UUID     `json:"before_id"`
+	BeforeID   *uuid.UUID      `json:"before_id"`
 	PageSize   int32           `json:"page_size"`
 }
 
@@ -430,6 +429,38 @@ func (q *Queries) MarkDeliveryAttemptFailed(ctx context.Context, arg MarkDeliver
 	var i MarkDeliveryAttemptFailedRow
 	err := row.Scan(&i.ID, &i.Status, &i.AttemptCount)
 	return i, err
+}
+
+const markDeliveryDead = `-- name: MarkDeliveryDead :execrows
+UPDATE deliveries
+SET status = 'dead',
+    attempt_count = attempt_count + 1,
+    last_status_code = $1::int,
+    last_error = $2::text,
+    updated_at = now()
+WHERE id = $3
+  AND status = 'pending'
+  AND attempt_count = $4
+`
+
+type MarkDeliveryDeadParams struct {
+	StatusCode           *int32    `json:"status_code"`
+	LastError            *string   `json:"last_error"`
+	ID                   uuid.UUID `json:"id"`
+	ExpectedAttemptCount int32     `json:"expected_attempt_count"`
+}
+
+func (q *Queries) MarkDeliveryDead(ctx context.Context, arg MarkDeliveryDeadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markDeliveryDead,
+		arg.StatusCode,
+		arg.LastError,
+		arg.ID,
+		arg.ExpectedAttemptCount,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markDeliverySucceeded = `-- name: MarkDeliverySucceeded :execrows

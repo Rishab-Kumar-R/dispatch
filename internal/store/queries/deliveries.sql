@@ -107,3 +107,14 @@ FROM delivery_attempts a
          JOIN deliveries d ON d.id = a.delivery_id
 WHERE a.delivery_id = @delivery_id AND d.tenant_id = @tenant_id
 ORDER BY a.attempt_number;
+
+-- name: MarkDeliveryDead :execrows
+UPDATE deliveries
+SET status = 'dead',
+    attempt_count = attempt_count + 1,
+    last_status_code = sqlc.narg('status_code')::int,
+    last_error = sqlc.narg('last_error')::text,
+    updated_at = now()
+WHERE id = @id
+  AND status = 'pending'
+  AND attempt_count = @expected_attempt_count;
